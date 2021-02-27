@@ -19,7 +19,7 @@
 # THE SOFTWARE.
 
 from setuptools import setup
-from sentry_mattermost import VERSION
+from sentry_mattermost_reformed import VERSION
 
 setup(
     name="sentry_mattermost_reformed",
@@ -31,9 +31,12 @@ setup(
     keywords="sentry mattermost devops",
     url="https://github.com/hadi2f244/sentry-mattermost-reformed",
     packages=['sentry_mattermost_reformed'],
+    install_requires=[
+          'requests',
+    ],
     entry_points={
        'sentry.plugins': [
-            'mattermost = sentry_mattermost_reformed.plugin:Mattermost'
+            'mattermost = sentry_mattermost_reformed.plugin:MattermostPlugin'
         ],
     },
 )

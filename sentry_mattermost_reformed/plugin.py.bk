@@ -19,16 +19,24 @@
 # THE SOFTWARE.
 
 import json
-import urllib2
+import requests
 import operator
 
 from django import forms
 from django.db.models import Q
 from sentry import tagstore
+from sentry.integrations import FeatureDescription, IntegrationFeatures
 from sentry.plugins.bases import notify
+from sentry_plugins.base import CorePluginMixin
+import sentry_mattermost_reformed
 
-import sentry_mattermost
-
+LEVEL_TO_COLOR = {
+    "debug": "cfd3da",
+    "info": "2788ce",
+    "warning": "f18500",
+    "error": "f43f20",
+    "fatal": "d20f2a",
+}
 
 def get_project_full_name(project):
     if project.team.name not in project.name:
@@ -48,7 +56,7 @@ def get_tags(event):
     if not tag_list:
         return ()
 
-    return ((tagstore.get_tag_key_label(k), tagstore.get_tag_value_label(k, v)) 
+    return ((tagstore.get_tag_key_label(k), tagstore.get_tag_value_label(k, v))
             for k, v in tag_list)
 
 
@@ -81,7 +89,7 @@ class PayloadFactory:
 
         payload = {
             "username": "Sentry",
-            "icon_url": "https://myovchev.github.io/sentry-slack/images/logo32.png", #noqa
+            "icon_url": "https://myovchev.github.io/sentry-slack/images/logo32.png",  # noqa
             "text": text
         }
         return payload
@@ -89,42 +97,87 @@ class PayloadFactory:
 
 def request(url, payload):
     data = "payload=" + json.dumps(payload)
-    req = urllib2.Request(url, data)
-    response = urllib2.urlopen(req)
-    return response.read()
+    # req = urllib2.Request(url, data)
+    # response = urllib2.urlopen(req)
+    # return response.read()
+    req = requests.post(url, data)
+    return req.text
 
 
 class MattermostOptionsForm(notify.NotificationConfigurationForm):
-    webhook = forms.URLField(
-        help_text='Incoming Webhook URL',
-        widget=forms.URLInput(attrs={'class': 'span8'})
-    )
-    include_rules = forms.BooleanField(
-        help_text='Include triggering rules with notifications',
-        required=False,
-    )
-    include_tags = forms.BooleanField(
-        help_text='Include tags with notifications',
-        required=False,
-    )
+
+    def get_config(self, project, **kwargs):
+        return [
+            {
+                "name": "webhook",
+                "label": "Webhook URL",
+                "type": "url",
+                "placeholder": "",
+                "required": True,
+                "help": "Incoming Webhook URL",
+            },
+            {
+                "name": "include_tags",
+                "label": "Include Tags",
+                "type": "bool",
+                "required": False,
+                "help": "Include tags with notifications",
+            },
+            {
+                "name": "include_rules",
+                "label": "Include Rules",
+                "type": "bool",
+                "required": False,
+                "help": "Include triggering rules with notifications.",
+            },
+        ]
+    # webhook = forms.URLField(
+    #     help_text='Incoming Webhook URL',
+    #     widget=forms.URLInput(attrs={'class': 'span8'})
+    # )
+    # include_rules = forms.BooleanField(
+    #     help_text='Include triggering rules with notifications',
+    #     required=False,
+    # )
+    # include_tags = forms.BooleanField(
+    #     help_text='Include tags with notifications',
+    #     required=False,
+    # )
 
 
-class Mattermost(notify.NotificationPlugin):
+class Mattermost(CorePluginMixin, notify.NotificationPlugin):
     title = 'Mattermost'
     slug = 'mattermost'
     description = 'Enables notifications for Mattermost Open Source Chat'
-    version = sentry_mattermost.VERSION
+    version = sentry_mattermost_reformed.VERSION
     author = 'Mohammad Hadi Azaddel <https://github.com/hadi2f244/sentry-mattermost-reformed>'
     author_url = 'https://github.com/hadi2f244/sentry-mattermost-reformed'
     project_conf_form = MattermostOptionsForm
+    required_field = "webhook"
+    feature_descriptions = [
+        FeatureDescription(
+            """
+            Configure rule based mattermost notifications to automatically be posted into a
+            specific channel. Want any error that's happening more than 100 times a
+            minute to be posted in `#critical-errors`? Setup a rule for it!
+            """,
+            IntegrationFeatures.ALERT_RULE,
+        )
+    ]
+
 
     def is_configured(self, project):
         return all((self.get_option(k, project) for k in ('webhook',)))
 
-    def notify(self, notification):
-        project = notification.event.group.project
+
+    def notify(self, notification, raise_exception=False):
+        event = notification.event
+        group = event.group
+        project = group.project
+
         if not self.is_configured(project):
             return
+
 
         webhook = self.get_option('webhook', project)
         payload = PayloadFactory.create(self, notification)

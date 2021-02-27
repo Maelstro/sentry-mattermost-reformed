@@ -17,7 +17,7 @@ services:
     ports:
       - "9000"
     volumes:
-      - "./sentry_mattermost:/usr/local/lib/python2.7/site-packages/sentry_mattermost"
+      - "./sentry_mattermost_reformed:/usr/local/lib/python2.7/site-packages/sentry_mattermost_reformed"
       - ".:/root/plugins"
     depends_on:
       - redis
@@ -35,7 +35,7 @@ services:
   sentry_worker:
     image: sentry:8.19.0
     volumes:
-      - "./sentry_mattermost:/usr/local/lib/python2.7/site-packages/sentry_mattermost"
+      - "./sentry_mattermost_reformed:/usr/local/lib/python2.7/site-packages/sentry_mattermost_reformed"
       - ".:/root/plugins"
     depends_on:
       - redis
@@ -54,7 +54,7 @@ services:
   sentry_cron:
     image: sentry:8.19.0
     volumes:
-      - "./sentry_mattermost:/usr/local/lib/python2.7/site-packages/sentry_mattermost"
+      - "./sentry_mattermost_reformed:/usr/local/lib/python2.7/site-packages/sentry_mattermost_reformed"
       - ".:/root/plugins"
     depends_on:
       - redis
