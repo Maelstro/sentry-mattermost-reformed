@@ -2,7 +2,7 @@ from sentry import tagstore
 from sentry.plugins.bases import notify
 from sentry.utils import json
 from sentry.utils.http import absolute_uri
-from sentry.integrations import FeatureDescription, IntegrationFeatures
+from sentry.integrations.base import FeatureDescription, IntegrationFeatures
 
 from .client import MattermostApiClient
 from sentry_plugins.base import CorePluginMixin
